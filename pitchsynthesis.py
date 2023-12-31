@@ -3,7 +3,6 @@ import numpy as np
 import statistics
 from matplotlib import pyplot as plt
 import argparse
-import argparse
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-f", "--file", required = True, help = "Path to the csv file containing pitches and time markers")
@@ -26,7 +25,7 @@ pitchCSV = csv.DictReader(open(args["file"]))
 for row in pitchCSV:
     time, frequency, confidence = row.items()
     #print(f"Time: {time[1]}\nFreq: {frequency[1]}\nConfidence: {confidence[1]}")
-    if float(confidence[1]) > 0.8:
+    if float(confidence[1]) > 0.9 and float(frequency[1]) < 700:
         tempDict = [float(time[1]), float(frequency[1])]
         time_markers.append(float(time[1]))
         frequency_list.append(float(frequency[1]))
@@ -53,21 +52,22 @@ if args["time"]:
     # Multiplying by ten so seconds can be input
     rounded_freqs = rounded_freqs[start_time*10:end_time*10]
 
-newFreqs = []
+dropped_freqs = []
 for i in range(1, len(rounded_freqs) - 1):
     if rounded_freqs[i] != rounded_freqs[i-1]:
-        newFreqs.append(rounded_freqs[i])
+        dropped_freqs.append(rounded_freqs[i])
 
 f2 = open(f"{args['file'][:len(args['file'])-4]}_frequencies.txt","w")
 for freq in rounded_freqs:
     f2.write(f"100 NewFreq {freq};\n")
+f2.close()
 
 #for freq in frequency_list:
 #    f2.write(f"100 NewFreq {freq};\n")
 print("DROPPED SET (repeated frequencies for held notes dropped)")
-print(f"Mean: {np.mean(newFreqs)}")
-print(f"Mode: {statistics.mode(newFreqs)}")
-print(f"Median: {sorted(newFreqs)[len(newFreqs)//2]}")
+print(f"Mean: {np.mean(dropped_freqs)}")
+print(f"Mode: {statistics.mode(dropped_freqs)}")
+print(f"Median: {sorted(dropped_freqs)[len(dropped_freqs)//2]}\n")
 print("FULL SET")
 print(f"Mean: {np.mean(rounded_freqs)}")
 print(f"Mode: {statistics.mode(rounded_freqs)}")
@@ -79,14 +79,23 @@ if args["plot"]:
     plt.xlabel("time (ms)")
     plt.ylabel("pitch (hz)")
     plt.plot(np.arange(0, len(rounded_freqs)), rounded_freqs)
-    plt.axhline(y=np.mean(rounded_freqs), color='r', linestyle='-')
-    plt.axhline(y=statistics.mode(rounded_freqs), color='b', linestyle='-')
+    plt.axhline(y=np.mean(rounded_freqs), color='r', linestyle='-', label="mean")
+    plt.axhline(y=statistics.mode(rounded_freqs), color='b', linestyle='-', label="mode")
+    plt.axhline(y=statistics.mode(dropped_freqs), color='g', linestyle='-', label="dropped mode")
+    leg = plt.legend(loc='upper left')
 
     plt.figure(2)
     plt.title("Unmodified Pitches")
     plt.xlabel("time (ms)")
     plt.ylabel("pitch (hz)")
     plt.plot(np.arange(0, len(frequency_list)), frequency_list)
-    plt.axhline(y=np.mean(frequency_list), color='r', linestyle='-')
-    plt.axhline(y=statistics.mode(rounded_freqs), color='b', linestyle='-')
+    plt.axhline(y=np.mean(frequency_list), color='r', linestyle='-', label="mean")
+    plt.axhline(y=statistics.mode(rounded_freqs), color='b', linestyle='-', label="mode")
+    leg = plt.legend(loc='upper left')
+
+    plt.figure(3)
+    plt.title("Histogram")
+    plt.hist(rounded_freqs)
+
+    print("\nClose plots to proceed")
     plt.show()
